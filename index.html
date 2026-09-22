@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Simulador de Conversaciones Difíciles</title>
+<style>
+  :root {
+    --brand-50: #f2f6ff;
+    --brand-100: #e6edff;
+    --brand-200: #c3d4ff;
+    --brand-500: #2f5bff;
+    --brand-600: #1e40d6;
+    --brand-900: #0d1a4d;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-500: #6b7280;
+    --gray-700: #374151;
+    --red-600: #dc2626;
+    --green-600: #16a34a;
+    --amber-600: #d97706;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #f5f6fb;
+    color: #1f2937;
+  }
+  .page { max-width: 760px; margin: 0 auto; padding: 24px 16px; }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  h1 { color: var(--brand-900); font-size: 26px; margin: 0 0 8px; }
+  h2 { color: var(--brand-900); font-size: 16px; margin: 0 0 12px; }
+  .subtitle { color: var(--gray-500); font-size: 14px; margin: 0 0 24px; }
+  .section { margin-bottom: 24px; }
+  label { display: block; font-size: 14px; color: var(--gray-700); margin-bottom: 4px; }
+  textarea, input[type="text"] {
+    width: 100%;
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+  }
+  textarea:focus, input[type="text"]:focus {
+    outline: none;
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 1px var(--brand-500);
+  }
+  .field { margin-bottom: 12px; }
+  .option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 520px) { .option-grid { grid-template-columns: 1fr; } }
+  .option-grid.difficulty { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 640px) { .option-grid.difficulty { grid-template-columns: 1fr; } }
+  .option {
+    cursor: pointer;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 14px;
+    transition: 0.15s;
+  }
+  .option:hover { border-color: var(--brand-200); }
+  .option.selected { border-color: var(--brand-500); background: var(--brand-50); color: var(--brand-900); }
+  .option .hint { display: block; margin-top: 4px; font-size: 12px; color: var(--gray-500); }
+  .btn {
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--brand-500); color: #fff; width: 100%; }
+  .btn-primary:hover { background: var(--brand-600); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-secondary { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-200); }
+  .btn-secondary:hover { background: var(--gray-100); }
+  .btn-danger { background: #fff; color: var(--red-600); border: 1px solid #fecaca; }
+  .btn-danger:hover { background: #fef2f2; }
+  .btn-small { padding: 7px 12px; font-size: 12px; }
+  .error-text { color: var(--red-600); font-size: 13px; margin: 8px 0; }
+  .hint-note { color: var(--gray-500); font-size: 12px; margin-top: 6px; }
+
+  /* Chat */
+  .chat-page { display: flex; flex-direction: column; height: 100vh; max-width: 760px; margin: 0 auto; padding: 16px; }
+  .chat-header {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+    background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 12px;
+  }
+  .chat-header .title { font-size: 14px; font-weight: 600; color: var(--brand-900); }
+  .chat-header .meta { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+  .chat-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chat-body {
+    flex: 1; overflow-y: auto; background: #fff; border-radius: 12px; padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 10px;
+  }
+  .empty-hint { text-align: center; color: #9ca3af; font-size: 14px; margin-top: 20px; }
+  .msg-row { display: flex; }
+  .msg-row.user { justify-content: flex-end; }
+  .msg-row.assistant { justify-content: flex-start; }
+  .bubble {
+    max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 14px; white-space: pre-wrap; line-height: 1.4;
+  }
+  .bubble.user { background: var(--brand-500); color: #fff; }
+  .bubble.assistant { background: var(--gray-100); color: #1f2937; }
+  .chat-input-row { display: flex; gap: 8px; margin-top: 12px; }
+  .chat-input-row input { flex: 1; padding: 12px 14px; border-radius: 12px; }
+  .typing-dots span {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #9ca3af; margin-right: 3px;
+    animation: bounce 1s infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+
+  /* Feedback */
+  .score-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  }
+  .score-green { background: #f0fdf4; color: var(--green-600); }
+  .score-amber { background: #fffbeb; color: var(--amber-600); }
+  .score-red { background: #fef2f2; color: var(--red-600); }
+  .avg-badge { font-size: 30px; padding: 8px 20px; }
+  .progress-track { height: 8px; width: 100%; background: var(--gray-100); border-radius: 999px; overflow: hidden; margin: 6px 0 8px; }
+  .progress-fill { height: 100%; border-radius: 999px; }
+  .fill-green { background: var(--green-600); }
+  .fill-amber { background: var(--amber-600); }
+  .fill-red { background: var(--red-600); }
+  .criterion { margin-bottom: 16px; }
+  .criterion-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 2px; }
+  .criterion-title { font-size: 14px; font-weight: 600; color: #1f2937; }
+  .criterion-comment { font-size: 14px; color: var(--gray-500); }
+  .tips-box { background: var(--brand-50); border-radius: 16px; padding: 20px; margin: 16px 0; }
+  .tips-box p { margin: 0 0 8px; font-weight: 600; color: var(--brand-900); font-size: 14px; }
+  .tips-box ol { margin: 0; padding-left: 20px; color: var(--brand-900); font-size: 14px; }
+  .button-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .center-text { text-align: center; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ============ PANTALLA 1: SETUP ============ -->
+<div id="view-setup" class="page">
+  <div class="card">
+    <div class="center-text" style="margin-bottom:24px;">
+      <h1>Simulador de Conversaciones Difíciles</h1>
+      <p class="subtitle">Prepara tu desafío comunicacional y practícalo con un interlocutor simulado antes de tenerlo en la vida real.</p>
+    </div>
+
+    <div class="section">
+      <h2>1. Elige tu desafío comunicacional</h2>
+      <div class="option-grid" id="challenge-options"></div>
+    </div>
+
+    <div class="section">
+      <h2>2. Contexto de la situación</h2>
+      <div class="field">
+        <label>¿Con quién es la conversación? (nombre o rol, ej. "mi jefe directo", "Pedro, del equipo de ventas")</label>
+        <input type="text" id="input-name" placeholder="Ej: Pedro" />
+      </div>
+      <div class="field">
+        <label>Describe brevemente la situación (qué pasó, qué rol cumple la otra persona, cualquier antecedente relevante) *</label>
+        <textarea id="input-context" rows="3" placeholder="Ej: Pedro se comprometió a entregarme el informe el viernes y no lo hizo, sin avisar. Esto ya pasó dos veces antes."></textarea>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>3. Prepara tu conversación</h2>
+      <div class="field">
+        <label>1. ¿Qué quieres que pase?</label>
+        <textarea id="prep-1" rows="2"></textarea>
+      </div>
+      <div class="field">
+        <label>2. ¿Qué necesitas decir con claridad?</label>
+        <textarea id="prep-2" rows="2"></textarea>
+      </div>
+      <div class="field">
+        <label>3. ¿Qué necesitas entender de la otra persona?</label>
+        <textarea id="prep-3" rows="2"></textarea>
+      </div>
+      <div class="field">
+        <label>4. ¿Qué quieres acordar?</label>
+        <textarea id="prep-4" rows="2"></textarea>
+      </div>
+      <p class="hint-note">Estas respuestas no las ve tu interlocutor simulado: se usan solo para el feedback final.</p>
+    </div>
+
+    <div class="section">
+      <h2>4. Elige el nivel de dificultad</h2>
+      <div class="option-grid difficulty" id="difficulty-options"></div>
+    </div>
+
+    <p class="error-text hidden" id="setup-error"></p>
+
+    <button class="btn btn-primary" id="btn-start">Comenzar conversación</button>
+  </div>
+</div>
+
+<!-- ============ PANTALLA 2: CHAT ============ -->
+<div id="view-chat" class="chat-page hidden">
+  <div class="chat-header">
+    <div>
+      <div class="title" id="chat-title"></div>
+      <div class="meta" id="chat-meta"></div>
+    </div>
+    <div class="chat-actions">
+      <button class="btn btn-primary btn-small" id="btn-feedback" disabled>Pedir feedback</button>
+      <button class="btn btn-secondary btn-small" id="btn-restart-chat">Reiniciar</button>
+      <button class="btn btn-danger btn-small" id="btn-exit-chat">Salir</button>
+    </div>
+  </div>
+  <div class="chat-body" id="chat-body">
+    <p class="empty-hint" id="chat-empty">Escribe tu primer mensaje para comenzar la conversación.</p>
+  </div>
+  <p class="error-text hidden" id="chat-error"></p>
+  <form class="chat-input-row" id="chat-form">
+    <input type="text" id="chat-input" placeholder="Escribe tu mensaje..." autocomplete="off" />
+    <button type="submit" class="btn btn-primary" id="btn-send" style="width:auto;">Enviar</button>
+  </form>
+</div>
+
+<!-- ============ PANTALLA 3: FEEDBACK ============ -->
+<div id="view-feedback" class="page hidden">
+  <h1 style="font-size:24px;">Feedback de tu conversación</h1>
+  <p class="subtitle">Evaluación en base al método de conversaciones difíciles.</p>
+
+  <div class="card center-text hidden" id="feedback-loading">
+    <p style="color:var(--gray-500); font-size:14px;">Analizando la conversación...</p>
+  </div>
+
+  <div class="card center-text hidden" id="feedback-error-box">
+    <p class="error-text" id="feedback-error-text"></p>
+    <button class="btn btn-primary" id="btn-back-from-error" style="width:auto;">Volver a la conversación</button>
+  </div>
+
+  <div id="feedback-results" class="hidden">
+    <div class="card center-text" style="margin-bottom:16px;">
+      <p style="font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:var(--gray-500); margin:0;">Logro promedio</p>
+      <span class="score-badge avg-badge" id="avg-badge" style="margin-top:8px;"></span>
+    </div>
+
+    <div class="card" id="criteria-list" style="margin-bottom:16px;"></div>
+
+    <div class="tips-box">
+      <p>Tips para la próxima vez</p>
+      <ol id="tips-list"></ol>
+    </div>
+
+    <div class="button-row">
+      <button class="btn btn-secondary" id="btn-back-to-chat">Volver a la conversación</button>
+      <button class="btn btn-primary" id="btn-restart-feedback" style="width:auto;">Practicar otro desafío</button>
+      <button class="btn btn-danger" id="btn-exit-feedback">Salir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PANTALLA 4: SALIDA ============ -->
+<div id="view-exit" class="page hidden">
+  <div class="card center-text">
+    <h1>¡Gracias por practicar!</h1>
+    <p class="subtitle">Puedes cerrar esta ventana o comenzar un nuevo desafío cuando quieras.</p>
+    <button class="btn btn-primary" id="btn-restart-exit" style="width:auto;">Practicar otro desafío</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Datos estáticos ----------
+  var CHALLENGES = [
+    ["peticion", "Algo que necesito pedir"],
+    ["compromiso_incumplido", "Un compromiso incumplido que necesito señalar"],
+    ["feedback_postergado", "Un feedback que estoy postergando"],
+    ["diferencia", "Una diferencia que tengo con alguien"],
+    ["coordinacion", "Una coordinación con otra persona que no está funcionando"]
+  ];
+
+  var DIFFICULTIES = [
+    ["facil", "Fácil", "La otra persona es colaborativa y abierta desde el inicio."],
+    ["medio", "Medio", "La otra persona parte algo a la defensiva; necesita hechos claros."],
+    ["dificil", "Difícil", "La otra persona es defensiva o evasiva; pondrá a prueba tu manejo del método."]
+  ];
+
+  var CHALLENGE_LABELS = {};
+  CHALLENGES.forEach(function (c) { CHALLENGE_LABELS[c[0]] = c[1]; });
+  var DIFFICULTY_LABELS = {};
+  DIFFICULTIES.forEach(function (d) { DIFFICULTY_LABELS[d[0]] = d[1]; });
+
+  // ---------- Estado ----------
+  var state = {
+    challengeType: "peticion",
+    difficulty: "medio",
+    setup: null,
+    messages: []
+  };
+
+  // ---------- Helpers de vista ----------
+  function show(id) {
+    ["view-setup", "view-chat", "view-feedback", "view-exit"].forEach(function (v) {
+      document.getElementById(v).classList.toggle("hidden", v !== id);
+    });
+  }
+
+  function el(tag, className, text) {
+    var e = document.createElement(tag);
+    if (className) e.className = className;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  // ---------- Setup: render opciones ----------
+  function renderChallengeOptions() {
+    var container = document.getElementById("challenge-options");
+    container.innerHTML = "";
+    CHALLENGES.forEach(function (c) {
+      var opt = el("div", "option" + (state.challengeType === c[0] ? " selected" : ""), c[1]);
+      opt.addEventListener("click", function () {
+        state.challengeType = c[0];
+        renderChallengeOptions();
+      });
+      container.appendChild(opt);
+    });
+  }
+
+  function renderDifficultyOptions() {
+    var container = document.getElementById("difficulty-options");
+    container.innerHTML = "";
+    DIFFICULTIES.forEach(function (d) {
+      var opt = el("div", "option" + (state.difficulty === d[0] ? " selected" : ""));
+      var strong = el("span", null, d[1]);
+      strong.style.fontWeight = "600";
+      strong.style.display = "block";
+      var hint = el("span", "hint", d[2]);
+      opt.appendChild(strong);
+      opt.appendChild(hint);
+      opt.addEventListener("click", function () {
+        state.difficulty = d[0];
+        renderDifficultyOptions();
+      });
+      container.appendChild(opt);
+    });
+  }
+
+  document.getElementById("btn-start").addEventListener("click", function () {
+    var context = document.getElementById("input-context").value.trim();
+    var errorEl = document.getElementById("setup-error");
+    if (!context) {
+      errorEl.textContent = "Cuéntanos brevemente el contexto de la situación antes de empezar.";
+      errorEl.classList.remove("hidden");
+      return;
+    }
+    errorEl.classList.add("hidden");
+
+    state.setup = {
+      challengeType: state.challengeType,
+      difficulty: state.difficulty,
+      otherPersonName: document.getElementById("input-name").value.trim(),
+      context: context,
+      prep: {
+        queQuierenQuePase: document.getElementById("prep-1").value.trim(),
+        queNecesitanDecir: document.getElementById("prep-2").value.trim(),
+        queNecesitasEntender: document.getElementById("prep-3").value.trim(),
+        queQuieresAcordar: document.getElementById("prep-4").value.trim()
+      }
+    };
+    state.messages = [];
+    startChatView();
+  });
+
+  // ---------- Chat ----------
+  function startChatView() {
+    document.getElementById("chat-title").textContent = CHALLENGE_LABELS[state.setup.challengeType];
+    document.getElementById("chat-meta").textContent =
+      "Con " + (state.setup.otherPersonName || "tu interlocutor") + " · Dificultad: " + DIFFICULTY_LABELS[state.setup.difficulty];
+    renderChatMessages();
+    document.getElementById("chat-error").classList.add("hidden");
+    show("view-chat");
+  }
+
+  function renderChatMessages() {
+    var body = document.getElementById("chat-body");
+    body.innerHTML = "";
+    if (state.messages.length === 0) {
+      body.appendChild(el("p", "empty-hint", "Escribe tu primer mensaje para comenzar la conversación."));
+    }
+    state.messages.forEach(function (m) {
+      var row = el("div", "msg-row " + m.role);
+      var bubble = el("div", "bubble " + m.role, m.content);
+      row.appendChild(bubble);
+      body.appendChild(row);
+    });
+    body.scrollTop = body.scrollHeight;
+    document.getElementById("btn-feedback").disabled =
+      state.messages.filter(function (m) { return m.role === "user"; }).length === 0;
+  }
+
+  function showTypingIndicator() {
+    var body = document.getElementById("chat-body");
+    var row = el("div", "msg-row assistant");
+    row.id = "typing-row";
+    var bubble = el("div", "bubble assistant");
+    bubble.innerHTML = '<span class="typing-dots"><span></span><span></span><span></span></span>';
+    row.appendChild(bubble);
+    body.appendChild(row);
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function removeTypingIndicator() {
+    var row = document.getElementById("typing-row");
+    if (row) row.remove();
+  }
+
+  document.getElementById("chat-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var input = document.getElementById("chat-input");
+    var text = input.value.trim();
+    if (!text) return;
+
+    state.messages.push({ role: "user", content: text });
+    input.value = "";
+    renderChatMessages();
+    document.getElementById("chat-error").classList.add("hidden");
+
+    var sendBtn = document.getElementById("btn-send");
+    sendBtn.disabled = true;
+    input.disabled = true;
+    showTypingIndicator();
+
+    fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ setup: state.setup, messages: state.messages })
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data.error || "Error del servidor");
+          return data;
+        });
+      })
+      .then(function (data) {
+        removeTypingIndicator();
+        state.messages.push({ role: "assistant", content: data.reply || "" });
+        renderChatMessages();
+      })
+      .catch(function (err) {
+        removeTypingIndicator();
+        console.error(err);
+        var errorEl = document.getElementById("chat-error");
+        errorEl.textContent = "No se pudo obtener respuesta: " + err.message;
+        errorEl.classList.remove("hidden");
+      })
+      .finally(function () {
+        sendBtn.disabled = false;
+        input.disabled = false;
+        input.focus();
+      });
+  });
+
+  document.getElementById("btn-restart-chat").addEventListener("click", resetAll);
+  document.getElementById("btn-exit-chat").addEventListener("click", function () { show("view-exit"); });
+
+  // ---------- Feedback ----------
+  document.getElementById("btn-feedback").addEventListener("click", requestFeedback);
+
+  function requestFeedback() {
+    show("view-feedback");
+    document.getElementById("feedback-results").classList.add("hidden");
+    document.getElementById("feedback-error-box").classList.add("hidden");
+    document.getElementById("feedback-loading").classList.remove("hidden");
+
+    fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ setup: state.setup, messages: state.messages })
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data.error || "Error generando el feedback.");
+          return data;
+        });
+      })
+      .then(function (data) {
+        renderFeedback(data);
+        document.getElementById("feedback-loading").classList.add("hidden");
+        document.getElementById("feedback-results").classList.remove("hidden");
+      })
+      .catch(function (err) {
+        console.error(err);
+        document.getElementById("feedback-loading").classList.add("hidden");
+        document.getElementById("feedback-error-text").textContent = err.message;
+        document.getElementById("feedback-error-box").classList.remove("hidden");
+      });
+  }
+
+  function scoreClass(score, prefix) {
+    if (score >= 75) return prefix + "-green";
+    if (score >= 50) return prefix + "-amber";
+    return prefix + "-red";
+  }
+
+  function renderFeedback(data) {
+    var avgBadge = document.getElementById("avg-badge");
+    avgBadge.textContent = data.average + "%";
+    avgBadge.className = "score-badge avg-badge " + scoreClass(data.average, "score");
+
+    var list = document.getElementById("criteria-list");
+    list.innerHTML = "";
+    (data.items || []).forEach(function (item) {
+      var wrap = el("div", "criterion");
+      var top = el("div", "criterion-top");
+      top.appendChild(el("p", "criterion-title", item.title));
+      var badge = el("span", "score-badge " + scoreClass(item.score, "score"), item.score + "%");
+      top.appendChild(badge);
+      wrap.appendChild(top);
+
+      var track = el("div", "progress-track");
+      var fill = el("div", "progress-fill " + scoreClass(item.score, "fill"));
+      fill.style.width = item.score + "%";
+      track.appendChild(fill);
+      wrap.appendChild(track);
+
+      wrap.appendChild(el("p", "criterion-comment", item.comment));
+      list.appendChild(wrap);
+    });
+
+    var tipsList = document.getElementById("tips-list");
+    tipsList.innerHTML = "";
+    (data.tips || []).forEach(function (tip) {
+      tipsList.appendChild(el("li", null, tip));
+    });
+  }
+
+  document.getElementById("btn-back-to-chat").addEventListener("click", function () { show("view-chat"); });
+  document.getElementById("btn-back-from-error").addEventListener("click", function () { show("view-chat"); });
+  document.getElementById("btn-restart-feedback").addEventListener("click", resetAll);
+  document.getElementById("btn-exit-feedback").addEventListener("click", function () { show("view-exit"); });
+  document.getElementById("btn-restart-exit").addEventListener("click", resetAll);
+
+  // ---------- Reset ----------
+  function resetAll() {
+    state.setup = null;
+    state.messages = [];
+    document.getElementById("input-name").value = "";
+    document.getElementById("input-context").value = "";
+    document.getElementById("prep-1").value = "";
+    document.getElementById("prep-2").value = "";
+    document.getElementById("prep-3").value = "";
+    document.getElementById("prep-4").value = "";
+    document.getElementById("setup-error").classList.add("hidden");
+    show("view-setup");
+  }
+
+  // ---------- Init ----------
+  renderChallengeOptions();
+  renderDifficultyOptions();
+  show("view-setup");
+})();
+</script>
+</body>
+</html>
