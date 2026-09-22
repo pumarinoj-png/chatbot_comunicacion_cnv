@@ -43,7 +43,7 @@ const FEEDBACK_CRITERIA = [
 const FEEDBACK_TOOL = {
   name: "entregar_feedback",
   description:
-    "Entrega la evaluación estructurada de la conversación de práctica según los 6 criterios del método.",
+    "Entrega la evaluación estructurada de la conversación de práctica según los 6 criterios del método sin demasiada exigencia.",
   input_schema: {
     type: "object",
     properties: {
